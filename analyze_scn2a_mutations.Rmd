@@ -26,30 +26,29 @@ Let's explore the one you loaded. How would you check the class of the `d` objec
 
 ```{r}
 # Please type the command below
-
+class(d)
 ```
 
-It shows that the `d` object is '_________'. 
+It shows that the `d` object is 'data frame'. 
 
 Then, let's overview the data frame.
 
 ```{r}
 head(d)
-
 ```
 
 You can see several columns in this data frame. Let's look at the first column `PatientID` and check which class is. 
 
 ```{r}
 # Please type the command below
-
+class(d$PatientID)
 ```
 
-Right. It's '___________'. How about the class for the column `Effect`?
+Right. It's 'factor'. How about the class for the column `Effect`?
 
 ```{r}
 # Please type the command below
-
+class(d$Effect)
 ```
 
 We can overview the summary of the dataset. How many columns have a character class?
@@ -71,5 +70,8 @@ Let's overview the matrix object. Can you find difference with data frame?
 
 ```{r}
 summary(d1)
+```
+```{r}
+summary(d)
 ```
 
