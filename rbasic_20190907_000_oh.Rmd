@@ -1,7 +1,3 @@
----
-output: html_notebook
----
-
 ## 3.7 Vectors
 
 In R, the most basic objects available to store data are _vectors_. As we have seen, complex datasets can usually be broken down into components that are vectors. For example, in a data frame, each column is a vector. Here we learn more about this important class.
