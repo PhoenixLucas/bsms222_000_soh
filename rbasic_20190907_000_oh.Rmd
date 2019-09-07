@@ -494,11 +494,26 @@ The `is.na` function returns a logical vector that tells us which entries are `N
 ```{r}
 ind <- is.na(na_example)
 table(ind)["TRUE"]
+table(ind)
 ```
 8.\ Now compute the average again, but only for the entries that are not `NA`. Hint: remember the `!` operator.
 ```{r}
-# na_example is an integer vector with NAs in it.
+#indexes of FALSE for ind can be written as...
+j <- order(as.numeric(ind))
+not_NA <- na_example[j[1:855]]
+mean(not_NA)
 
-na_example 
+```
+I calculated the mean, but not using `!` operator. How do I approach this?
+I think, I have to find an index vector of elements in `na_example` that are **NOT** `NA`s.
+We can use `which()` to return index of elements that satisfy specific conditions.
+
+```{r}
+not_NAs <- which(ind != "TRUE")
+na_example[not_NAs]
+```
+```{r}
+mean(na_example[not_NAs])
 ```
 
+## 3.12 Vector arithmetics
