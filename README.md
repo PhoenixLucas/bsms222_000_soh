@@ -1,1 +1,13 @@
-# bsms222_000_soh
+## BSMS222_000_oh
+
+### R Basics
+
+[R Basics](https://htmlpreview.github.io/?https://github.com/PhoenixLucas/bsms222_000_soh/blob/master/rbasic_20190906_000_oh.html){:target="_blank"}
+
+### Programming basics
+[Programming basics 1](https://htmlpreview.github.io/?https://github.com/PhoenixLucas/bsms222_000_soh/blob/master/r_basic_20190911_000_oh.nb.html){:target="_blank"}
+
+[Programming basics 2](https://htmlpreview.github.io/?https://github.com/PhoenixLucas/bsms222_000_soh/blob/master/programming_basics_20190921_000_oh.nb.html){:target="_blank"}
+
+### Tidyverse
+[Tidyverse](https://htmlpreview.github.io/?https://github.com/PhoenixLucas/bsms222_000_soh/blob/master/tidyverse_20190926_000_oh.nb.html){:target="_blank"}
