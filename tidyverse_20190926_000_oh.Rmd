@@ -3,12 +3,15 @@ output: html_notebook
 ---
 
 # Chapter 5 The tidyverse 
-_함수형프로그래밍이란 무엇인가_ 참조[^1] </br>
-_Cheat sheets for purrr package_ 참조[^2]
+그 외에 좋은 참고할만한 사이트.</br>
+- [_purrr 패키지를 이용한 함수형프로그래밍이란 무엇인가_](https://statkclee.github.io/parallel-r/ds-fp-purrr.html){target="_blank"}</br>
+- [_Cheat sheets for purrr package_](https://github.com/rstudio/cheatsheets/blob/master/purrr.pdf){target="_blank"}</br>
+- 이광춘 교수님의 [_xwMooc_](https://statkclee.github.io/xwMOOC/){target="_blank"}. </br>
+- [_Data Carpentry for Biologists_](https://datacarpentry.org/semester-biology/){target="_blank"} as taught at University of Florida in Fall 2015. </br>
+- [_Data Carpentry Genomics Curriculum_.](https://datacarpentry.org/lessons/#genomics-workshop){target="_blank"}</br>
 
+> John Chambers: “To understand computations in R, two slogans are helpful: Everything that exists is an object. Everything that happens is a function call.”
 
-[^1]: <https://statkclee.github.io/parallel-r/ds-fp-purrr.html>
-[^2]: <https://github.com/rstudio/cheatsheets/blob/master/purrr.pdf>
 
 Up to now we have been manipulating vectors by reordering and subsetting them through indexing. However, once we start more advanced analyses, the preferred unit for data storage is not the vector but the data frame. In this chapter we learn to work directly with data frames, which greatly facilitate the organization of information.. We will be using data frames for the majority of this book. We will focus on a specific data format referred to as _tidy_ and on specific collection of packages that are particularly helpful for working with tidy data referred to as the _tidyverse_.
 
@@ -1020,4 +1023,309 @@ median(rates)
 ```
 
 In the next section, we will see other instances in which using the `.` is useful.
+
+## 5.12 `do`
+
+The tidyverse functions know how to interpret grouped tibbles. Furthermore, to facilitate stringing commands through the pipe `%>%`, tidyverse functions consistently return data frames, since this assures that the output of a function is accepted as the input of another. But most R functions do not recognize grouped tibbles nor do they return data frames. The `quantile` function is an example we described in Section 5.7.1. The `do` functions serves as a bridge between R functions such as `quantile` and the tidyverse. The `do` function understands gruoped tibbles and always returns a data frame.
+
+In Section 5.7.1, we noted that if we attempt to use `quantile` to obtain the min, median and max in one call, we will receive an error: `Error: Column `range` must be length 1 (a summary value), not 3`
+```{r}
+data(heights)
+heights %>% 
+  filter(sex == "Female") %>% 
+  summarize(range = quantile(height, c(0, 0.5, 1)))
+```
+We can use the `do` function to fix this.
+
+First we have to write a function that fits into the tidyverse approach: that is, it receives a data frame and returns a data frame.
+
+```{r}
+my_summary <- function(dat){
+  x <- quantile(dat$height, c(0, 0.5, 1))
+  tibble(min = x[1], median = x[2], max = x[3])
+}
+```
+
+We can now apply the function to the heights dataset to obtain the summaries:
+
+```{r}
+heights %>% 
+  group_by(sex) %>% 
+  my_summary
+```
+
+But this is not what we want. We want a summary for each sex and the code returned just one summary. This is because `my_summary` is not part of the tidyverse and does not know how to handle grouped tibbles. `do` makes this connection:
+
+```{r}
+heights %>% 
+  group_by(sex) %>% 
+  do(my_summary(.))
+```
+
+Note that here we need to use the dot operator. The tibble created by `group_by` is piped to `do`. Within the call to `do`, the name of this tibble is `.` and we want to send it to `my_summary`. If you do not use the dot, then `my_summary` has no argument and returns an error telling us that `argument "dat"` is missing. You can see the error by typing:
+
+```{r}
+heights %>% 
+  group_by(sex) %>% 
+  do(my_summary())
+```
+
+If you do not use the parenthesis, then the function is not executed and instead do tries to return the function. This gives an error because `do` must always return a data frame. You can see the error by typing:
+
+```{r}
+heights %>% 
+  group_by(sex) %>% 
+  do(my_summary)
+```
+
+## 5.13 The purrr package
+
+In Section 4.5 we learned about the `sapply` function, which permitted us to apply the same function to each element of a vector. We constructed this function:
+
+```{r}
+compute_s_n <- function(n){
+  x <- 1:n
+  sum(x)
+}
+```
+
+and used `sapply` to compute the sum of the first `n` integers for several values of `n` like this:
+
+```{r}
+n <- 1:25
+s_n <- sapply(n, compute_s_n)
+```
+
+This type of operation, applying the same function or procedure to elements of an object, is quite common in data analysis. The `purrr` package includes functions similar to `sapply` but that better interact with other tidyverse functions. The main advantage is that we can better control the output type of functions. In contrast, `sapply` can return several different object types; for example, we might expect a numeric result from a line of code, but `sapply` might convert our result to character under some circumstances. `purrr` functions will never do this: they will return objects of a specified type or return an error if this is not possible. 
+
+> 정해진 output이 아니면 마음대로 coercion하지 않고 warning을 출력한다는 점에서 debugging에 용이할 수 있다.
+
+The first `purrr` function we will learn is `map`, which works very similar to `sapply` but always, without exception, returns a list:
+
+```{r}
+library(purrr)
+s_n <- map(n, compute_s_n)
+class(s_n)
+```
+
+If we want a numeric vector, we can instead use `map_dbl` which always returns a vector of numeric values.
+
+```{r}
+s_n <- map_dbl(n, compute_s_n)
+class(s_n)
+```
+
+This produces the same results as the `sapply` call shown above.
+
+A particularly useful `purrr` function for interacting with the rest of the tidyverse is `map_df`, which always returns a tibble data frame. However, the function being called needs to return a vector or a list with names. For this reason, the following code would result in a `Argument 1 must have names` error:
+
+```{r}
+s_n <- map_df(n, compute_s_n)
+```
+
+We need to change the function to make this work:
+
+```{r, eval= FALSE}
+compute_s_n <- function(n){
+  x <- 1:n
+  tibble(sum = sum(x))
+}
+
+s_n <- map_df(n, compute_s_n)
+head(s_n)
+```
+
+```
+# A tibble: 6 x 1
+    sum
+  <int>
+1     1
+2     3
+3     6
+4    10
+5    15
+6    21
+```
+The `purrr` package provides much more functionality not covered here. For more details you can consult [this online resource.](https://jennybc.github.io/purrr-tutorial/){target="_blank"}
+
+## 5.14 Tidyverse conditionals
+
+A typical data analysis will often involve one or more conditional operation. In Section 4.1 we described the `ifelse` function, which we will use extensively in this book. In this section we present two __dplyr__ functions that provide further functionality for performing conditional operations.
+
+### 5.14.1 `case_when`
+
+The `case_when` function is useful for vectorizing conditional statements. It is similar to `ifelse` but can output any number of values, as opposed to just `TRUE` or `FALSE`. Here is an example splitting number into negative, positives and 0:
+
+```{r}
+x <- c(-2, -1, 0, 1, 2)
+case_when(x < 0 ~ "Negative", x > 0 ~"Positive", x == 0 ~ "Zero")
+```
+
+A common use for this function is to define categorical variables based on existing variables. For example, supposed we want to compare the murder rates in three groups of states: _New England_, _West Coast_, _South_ and _other_. For each state, we need to ask if it is in New England, if it is not we ask if it is in the West Coast, if not we ask if it is in the South (sequentially), and if not we assign _other_. Here is how we use `case_when` to do this:
+
+```{r, echo = FALSE}
+data(murders)
+murders %>% 
+  #group이라는 column을 하나 새로 만들고, 주에 따라 group에 나눠준다.
+  mutate(group = case_when(
+    abb %in% c("ME", "NH", "VT", "MA", "RI", "CT") ~ "New England",
+    abb %in% c("WA", "OR", "CA") ~ "West Coast",
+    region == "South" ~ "South",
+    TRUE ~ "other")) %>% 
+  #group에 의해 grouping 해준다.
+  group_by(group) %>% 
+  summarize(rate = sum(total) / sum(population) * 10^5) %>% 
+  arrange(rate)
+```
+```
+# A tibble: 4 x 2
+  group        rate
+  <chr>       <dbl>
+1 New England  1.72
+2 other        2.71
+3 West Coast   2.90
+4 South        3.63
+```
+### 5.14.2 `between`
+
+A common operation in data analysis is to determine if a value falls inside an interval. We can check this using conditionals. For example to check if the elements of a vector `x` are between `a` and `b` we can type
+
+```
+x >= a & x <= b
+```
+
+However, this can become cumbersome, especially within the tidyverse approach. The `between` function performs the same operation.
+
+```{r, eval = 0, echo = 0}
+between(x, a, b)
+```
+
+## 5.15 Exercises
+
+1. Load the `murders` dataset. Which of the following is true?
+
+```{r}
+class(murders)
+head(murders)
+```
+
+`murders` is in tidy format (variables are in columns and each row represents observation to that variable) and is stored in a data frame.
+
+2. Use `as_tibble` to convert the `murders` data table into a tibble and save it in an object called `murders_tibble`.
+
+```{r}
+murders_tibble <- murders %>% 
+  as_tibble()
+```
+
+3. Use the `group_by` function to convert murders into a tibble that is grouped by region.
+
+```{r}
+murders_tibble %>% group_by(region)
+```
+4. Write tidyverse code that is equivalent to this code: `exp(mean(log(murders$population)))`. Write it using the pipe so that each function is called without arguments. Use the dot operator to access the population.
+
+```{r}
+murders %>% .$population %>% log() %>% mean() %>% exp()
+```
+
+5. Use the `map_df` to create a data frame with three columns named `n`, `s_n`, and `s_n_2`. The first column should contain the numbers 1 through 100. The second and third columns should each contain the sum of 1 through `n` with `n` as the row number.
+
+Function을 만들고, 그 function을 element마다 하나하나 씩 실행해서 원하는 형태의 data frame으로 만들어주는게 map_df이다.
+
+```{r}
+#비어있는 data frame 만들기
+
+sum_1_2 <- tibble()
+
+n <- 1:100
+
+f <- function(n){
+  x <- 1:n
+  sum(x)
+}
+
+g <- function(n){
+  x <- 1:n %>% map_dbl(~n*n)
+  sum(x)
+}
+
+
+```
+
+`Argument 1 must have names` 에러메시지는 `map_df`에서 쓰이는 함수는 반드시 name을 갖는 list나 data frame을 반환해야 하기 때문에 발생한다 (list도 일종의 간단한 data frame으로 볼 수 있다). `map_df`는 이렇게 생긴 data frame들을 합해서 하나의 큰 data frame을 만들어준다. 그냥 f를 실행하면 numeric vector가 생성되기 때문에 안된다.
+따라서 f 자체에서 df가 만들어지도록 `tibble()`을 이용한다.
+
+```{r}
+
+#1부터 100 까지의 integer vector가 있다.
+n <- 1:100
+
+#이제 각각의 값을 구해서dataframe으로 만들어준다.
+#s_n 구하는 function 만들기
+
+compute_s_n <- function(n){
+  x <- 1:n
+  sum(x)
+}
+
+compute_s_n_2 <- function(n){
+  x <- 1:n %>% sapply(n*n)
+  sum(x)
+}
+
+different_sums <- mutate(n, s_n = map_df(n, compute_s_n), s_n_2 = map_df(n, compute_s_n_2))
+different_sums
+
+```
+
+```{r}
+#1부터 100 까지의 integer vector가 있다.
+n <- 1:100
+
+#이제 각각의 값을 구해서dataframe으로 만들어준다.
+#s_n 구하는 function 만들기
+
+#sqaure 정의
+sq <- function(n){
+  n*n
+}
+
+compute_s_n <- function(n){
+  x <- 1:n
+  tibble(sum(x))
+}
+
+compute_s_n_2 <- function(n){
+  x <- 1:n %>% sapply(sq)
+  tibble(sum(x))
+}
+
+df1 <- map_df(n, compute_s_n)
+df2 <- map_df(n, compute_s_n_2)
+df1
+df2
+```
+
+```{r}
+n <- 1:25
+
+sq <- function(n){
+  n*n
+}
+
+compute_s_n <- function(n){
+  x <- 1:n
+  sum(x)
+}
+
+compute_s_n_2 <- function(n){
+  x <- 1:n %>% sapply(sq)
+  sum(x)
+}
+
+s_n <- map_df(n, compute_s_n)
+s_n
+```
+
 
